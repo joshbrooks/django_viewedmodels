@@ -11,6 +11,6 @@ Usage:
  - The model requires an "sql" method which returns the sql required to create view
  - The model also requires a "dependencies" attribute. These are useful in generating table names within the SQL statement as well as dependency resolution.
  - The model also requires fields specified in the standard Django way. Foreign keys should work fine
-     - Foreign Keys: For ```ForeignKey(myApp.MyModel')``` we need to have a field 'mymodel_id' returned from the SQL.
+     - Foreign Keys: For ``ForeignKey(myApp.MyModel')`` we need to have a field 'mymodel_id' returned from the SQL.
 
- - Every Django model (including these ViewedModels) requires an 'id' field. We can fake this by including ```row_number() OVER () AS id``` somewhere in our SELECT statement.
+ - Every Django model (including these ViewedModels) requires an 'id' field. We can fake this by including ``row_number() OVER () AS id`` somewhere in our SELECT statement.
