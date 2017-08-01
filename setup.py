@@ -16,7 +16,7 @@ setup(
     include_package_data=True,
     license='GPLv3',  # example license
     description='A Django app to define Postgres Views as Models',
-    long_description=read('README'),
+    long_description=read('README.rst'),
     url='https://www.example.com/',
     author='Joshua Brooks',
     author_email='josh@catalpa.io',
