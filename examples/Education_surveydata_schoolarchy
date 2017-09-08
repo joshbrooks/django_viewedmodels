@@ -1,0 +1,64 @@
+### The "Schoolarchy" Model
+
+This is the command we were running in with migrations.RunSQL to create the table
+
+```sql
+CREATE MATERIALIZED VIEW schoolarchy AS WITH formchoice_schools AS
+  (SELECT jsonb_array_elements(jsonb_extract_path(formdesc.form_json, 'choices', 'school')) AS school
+   FROM surveydata_formdescription formdesc,
+        setting
+   WHERE setting.key = 'FORMSPECDUJOUR'
+     AND formdesc.form_json->>'name' = setting.blob->>'name'
+     AND formdesc.form_json->>'version' = setting.blob->>'version')
+SELECT (fs.school->>'name')::int AS school,
+       (fs.school->>'cluster')::int AS clus,
+       (fs.school->>'municipality')::int AS mun
+FROM formchoice_schools fs;
+```
+
+To make this into a django ViewedModel
+
+ - Add 'django-viewedmodels' to requirements.txt
+ - pip install 'django-viewedmodels'
+ - Create a model definition
+ - Migrations
+ - Run 'ViewedModels.recreate()'
+
+
+In models.py (or inherited into models.py):
+
+```python
+from django.db import models
+from viewedmodels.models import ViewedModel
+
+class Schoolarchy(ViewedModel):
+
+    materialized = True
+    dependencies = (('surveydata', 'formdescription'),)
+
+    @classmethod
+    def sql(cls):
+        return """
+```
+```sql
+          WITH formchoice_schools AS
+              (SELECT jsonb_array_elements(jsonb_extract_path(formdesc.form_json, 'choices', 'school')) AS school
+               FROM surveydata_formdescription formdesc,
+                    setting
+               WHERE setting.key = 'FORMSPECDUJOUR'
+                 AND formdesc.form_json->>'name' = setting.blob->>'name'
+                 AND formdesc.form_json->>'version' = setting.blob->>'version')
+            SELECT row_number() over () id,
+                   (fs.school->>'name')::int AS school,
+                   (fs.school->>'cluster')::int AS clus,
+                   (fs.school->>'municipality')::int AS mun
+            FROM formchoice_schools fs
+      """
+```
+```python
+    school = models.IntegerField()
+    clus = models.IntegerField()
+    mun = models.IntegerField()
+```
+
+
