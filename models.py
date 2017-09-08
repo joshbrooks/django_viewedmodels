@@ -121,7 +121,9 @@ class ViewDefinition:
         flattened = toposort_flatten(dependencies)
         print(flattened)
         for name in flattened:
-            app, model = name.split('_')
+            splitname = name.split('_')
+            model = splitname[-1]
+            app = '_'.join(splitname[:-1])
             if app == 'None' or model == 'viewedmodel':
                 continue
             model_object = get_model(app, model)
