@@ -1,7 +1,7 @@
 from collections import defaultdict
 from django.db import transaction, models, connection
 from toposort import toposort_flatten
-from helpers import table_name, get_subclasses, model_default_table_name, get_model, dependency_lookup
+from .helpers import table_name, get_subclasses, model_default_table_name, get_model, dependency_lookup
 
 
 class ViewedModel(models.Model):
