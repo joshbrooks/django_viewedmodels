@@ -11,18 +11,17 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='django_viewedmodels',
-    version='0.1.13',
+    version='0.1.14',
     packages=['viewedmodels', 'viewedmodels.management.commands'],
     include_package_data=True,
     license='GPLv3',  # example license
     description='A Django app to define Postgres Views as Models',
     long_description=read('README.rst'),
     url='https://github.com/joshbrooks/django_viewedmodels/',
-    download_url = 'https://github.com/joshbrooks/django_viewedmodels/archive/0.1.13.tar.gz', # I'll explain this in a second
+    download_url = 'https://github.com/joshbrooks/django_viewedmodels/archive/0.1.14.tar.gz',
     author='Joshua Brooks',
     author_email='josh@catalpa.io',
     install_requires=[
-        'django',
         'toposort'
     ],
     classifiers=[
