@@ -7,28 +7,33 @@ This lets us go outside the Django ORM to create views or materialized views to 
 the power of PostGreSQL without losing the power to access that data using the ORM. It is
 very probably compatible with other DBMS but tested only with PG.
 
-##Installation
+============
+Installation
+============
 
-For production
-```
-pip install django-viewedmodels
-```
+For production::
 
-For development
-```
-pip install -e git+https://github.com/joshbrooks/django_viewedmodels#egg=viewedmodels
-```
+    pip install django-viewedmodels
 
-Usage:
 
- - A model which uses this framework should inherit from ViewedModel
- - The model requires an "sql" method which returns the sql required to create view
- - The model also requires a "dependencies" attribute. These are useful in generating table names within the SQL statement as well as dependency resolution.
- - The model also requires fields specified in the standard Django way. Foreign keys should work fine.
- - Foreign Keys: For ``ForeignKey(myApp.MyModel')`` we need to have a field ``mymodel_id`` returned from the SQL.
- - Every Django model (including these ViewedModels) requires an 'id' field. We can fake this by including ``row_number() OVER () AS id`` somewhere (usually as the first item) in our SELECT statement.
+For development::
 
-Example: 
+    pip install -e git+https://github.com/joshbrooks/django_viewedmodels#egg=viewedmodels
+
+=======
+Usage
+=======
+
+* A model which uses this framework should inherit from ViewedModel
+* The model requires an "sql" method which returns the sql required to create view
+* The model also requires a "dependencies" attribute. These are useful in generating table names within the SQL statement as well as dependency resolution.
+* The model also requires fields specified in the standard Django way. Foreign keys should work fine.
+* Foreign Keys: For ``ForeignKey(myApp.MyModel')`` we need to have a field ``mymodel_id`` returned from the SQL.
+* Every Django model (including these ViewedModels) requires an 'id' field. We can fake this by including ``row_number() OVER () AS id`` somewhere (usually as the first item) in our SELECT statement.
+
+=======
+Example
+=======
 ::
    
     from django.db import models
