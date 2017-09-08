@@ -35,13 +35,13 @@ Usage
 Example
 =======
 ::
-   
+
     from django.db import models
     from django.contrib.postgres.fields import JSONField
     from viewedmodels.models import ViewedModel
     from viewedmodels.helpers import dependency_lookup
-    
-    
+
+
     class ActivityCommitment(ViewedModel):
         # Declaring dependencies for table lookup in the query and orderly build/ teardown of the views structure if
         # there is inheritance between ViewedModel instances
@@ -52,7 +52,7 @@ Example
             ('aims', 'AidType'),
             ('aims', 'TransactionValueUSD')
         )
-    
+
         @classmethod
         def sql(cls):
             tables = dependency_lookup(
@@ -73,7 +73,7 @@ Example
             WHERE
                 --... --truncated for brevity
         '''.format(**tables)
-    
+
         # id = models.AutoField(primary_key=True)
         activity = models.ForeignKey('aims.Activity')  # Represented as 'activity_id' in the query above
         aidtypecategory = models.ForeignKey(

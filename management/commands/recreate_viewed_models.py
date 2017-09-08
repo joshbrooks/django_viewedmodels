@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from ..models import ViewDefinition
+from viewedmodels.models import ViewDefinition
 import logging
 logger = logging.getLogger(__name__)
 
