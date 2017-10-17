@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Recreates the views found in aims viewed_models'
+    help = 'Refresh materialized views'
 
     def add_arguments(self, parser):
         parser.add_argument('--apps', default='all',
@@ -13,4 +13,4 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger.info('Regenerating views.')
-        ViewDefinition.recreate(apps=str(options['apps']))
+        ViewDefinition.refresh_mv(apps=str(options['apps']))

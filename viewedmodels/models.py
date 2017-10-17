@@ -1,14 +1,24 @@
+import json
 from collections import defaultdict
+from json import JSONDecodeError
+
 from django.db import transaction, models, connection
 from toposort import toposort_flatten
 from .helpers import table_name, get_subclasses, model_default_table_name, get_model, dependency_lookup
+from django.db.utils import ProgrammingError
+
+import logging
+logger = logging.getLogger(__name__)
+
+
+def time_from_db():
+    with connection.cursor() as c:
+        c.execute('SELECT now()::text')
+        return c.fetchone()[0]
 
 
 class ViewedModel(models.Model):
-    """
-    Features To Work On
-     - Allow Materialized Views
-    """
+
     class Meta:
         abstract = True
         managed = False
@@ -25,7 +35,7 @@ class ViewedModel(models.Model):
 
         # Returns a SQL string to be executed
         # This will be wrapped in CREATE VIEW
-        return '''
+        return_example = '''
         SELECT
             {mytable}.remote_data_id activity_id, -- Note the use of dependency_lookup here to get a table name from the canonical (app, model) format
             mytable.code aidtypecategory_id,
@@ -39,7 +49,9 @@ class ViewedModel(models.Model):
         AND {my_othertable}.transaction_type_id = 'C'
         AND something > 0
         '''.format(**tables)
-        raise NotImplementedError('This is a demonstration SQL statement which should be replaced in your subclass')
+        logger.debug(return_example)  # Avoid F841 error
+        raise NotImplementedError(
+            'This is a demonstration SQL statement which should be replaced in your subclass')
     del(sql)  # Remove this "demo" SQL
 
     @classmethod
@@ -51,22 +63,15 @@ class ViewedModel(models.Model):
             dry_run (bool): Do not execute the script
 
         """
+        params = {'name': table_name(cls),
+                  'type': 'MATERIALIZED VIEW' if getattr(cls, 'materialized', False) else 'VIEW',
+                  'cascade': 'CASCADE' if kwargs.get('drop_cascade', True) else ''}
 
-        if getattr(cls, 'materialized', False):
-            view_type = 'MATERIALIZED VIEW'
-        else:
-            view_type = 'VIEW'
-
-        if kwargs.get('drop_cascade', True):
-            sql = 'DROP {} IF EXISTS "{}" CASCADE;'
-        else:
-            sql = 'DROP {} IF EXISTS "{}";'
-
-        sql = sql.format(view_type, table_name(cls))
+        sql = '''DROP %(type)s IF EXISTS "%(name)s" %(cascade)s;''' % (params)
 
         if not kwargs.get('dryrun', False):
             with connection.cursor() as cursor:
-                cursor.execute(sql)
+                cursor.execute(sql, None)
         return [sql, None]
 
     @classmethod
@@ -74,28 +79,103 @@ class ViewedModel(models.Model):
         """Generate SQL code to create a view
 
         Kwargs:
-            drop (bool): Drop the view first. Normally you'll want to, unless using with dry_run to
-                format a list of SQL to include in one transaction.
-            drop_cascade (bool): Add "CASCADE" to the drop command
             dry_run (bool): Do not execute the script
         """
         assert hasattr(cls, 'sql'), 'Class {} has no sql statement'.format(cls)
-        statements = []
-        if kwargs.get('drop', False):
-            drop_sql = cls.sql_drop(**kwargs)
-            statements.append(drop_sql)
 
-        if getattr(cls, 'materialized', False):
-            view_type = 'MATERIALIZED VIEW'
-        else:
-            view_type = 'VIEW'
+        params = {'name': table_name(cls),
+                  'type': 'MATERIALIZED VIEW' if getattr(cls, 'materialized', False) else 'VIEW'}
 
-        sql = 'CREATE {} "{}" AS ({})'.format(view_type, table_name(cls), cls.sql())
+        sql = 'CREATE {} "{}" AS ({})'.format(
+            params['type'], params['name'], cls.sql())
 
         with connection.cursor() as cursor:
             if not kwargs.get('dryrun', False):
                 cursor.execute(sql, getattr(cls, 'params', None))
             return [sql, getattr(cls, 'params', None)]
+
+
+class MaterializedViewedModel(ViewedModel):
+
+    materialized = True
+
+    @classmethod
+    def sql_refresh(cls, **kwargs):
+        """Generate code to refresh a Materialized View"""
+
+        if not cls.update_mv():
+            logger.info('Update skipped')
+            return
+
+        sql = 'REFRESH MATERIALIZED VIEW {}'.format(table_name(cls))
+
+        if not kwargs.get('dryrun', False):
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, None)
+                cls.set_comment()
+            except ProgrammingError as e:
+                logger.error(e)
+                raise
+            return [sql, None]
+
+    @classmethod
+    def get_comment(cls):
+        with connection.cursor() as get_comment:
+            get_comment.execute('''
+            SELECT description
+            FROM   pg_description
+            WHERE  objoid = '{}'::regclass;
+            '''.format(table_name(cls)))
+            return get_comment.fetchone()[0]
+
+    @classmethod
+    def _set_comment(cls, comment):
+        with connection.cursor() as set_comment:
+            print(comment)
+            set_comment.execute(
+                "COMMENT ON MATERIALIZED VIEW {} IS '{}'".format(table_name(cls), comment))
+
+    @classmethod
+    def set_comment(cls):
+        """
+        Comment to write on a materialized view update
+        :return:
+        """
+        comment = cls.get_comment()
+        # Comment should be JSON string
+        try:
+            comment = json.dumps(comment)
+        except JSONDecodeError:
+            comment = {'old_content': '%s' % (comment)}
+        comment['last_updated'] = time_from_db()
+        cls._set_comment(json.dumps(comment))
+
+    @classmethod
+    def update_mv(cls):
+        """
+        Return False if an mv SHOULD NOT be updated
+        :return:
+        """
+        # For instance, we may want to have a "do not refresh if my data is less than 60 seconds old":
+        # age = cls.interval_since_last_update()
+        # if age < 60:
+        #     logger.info('View is less than one minute old. No update is done.')
+        #     return False
+        return True
+
+    @classmethod
+    def interval_since_last_update(cls):
+        """
+        Seconds since this view was last refreshed according to the comment
+        """
+        with connection.cursor() as cursor:
+            cursor.execute("""
+            SELECT now() - (description::json -> 'last_updated')::TEXT::TIMESTAMP WITH TIME ZONE
+            FROM   pg_description
+            WHERE  objoid = 'aims_transactionvalueusd'::regclass;
+            """.format(table_name(cls)))
+            return cursor.fetchone()[0].seconds
 
 
 class ViewDefinition:
@@ -119,7 +199,7 @@ class ViewDefinition:
                 dependencies[class_string].add(model_default_table_name(m))
 
         flattened = toposort_flatten(dependencies)
-        print(flattened)
+        logger.info(flattened)
         for name in flattened:
             splitname = name.split('_')
             model = splitname[-1]
@@ -167,3 +247,14 @@ class ViewDefinition:
                 if len(s) == 0:
                     s += None  # params for query
                 cursor.execute(s[0], s[1])
+
+    @classmethod
+    @transaction.atomic
+    def refresh_mv(cls, apps='all', **kwargs):
+        """
+        Refresh all materialized views on the application
+        """
+        ordered_models = cls.sort_dependencies(apps=apps)
+        mat_models = [m for m in ordered_models if getattr(
+            m, 'materialized', False)]
+        return [model.sql_refresh(**kwargs) for model in mat_models]

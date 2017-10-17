@@ -22,7 +22,8 @@ def get_model(app_name, model_name):
     try:
         model = app.get_model(model_name.lower())
     except LookupError:
-        raise LookupError('App {} Model {} not found'.format(app_name, model_name))
+        raise LookupError(
+            'App {} Model {} not found'.format(app_name, model_name))
     return model
 
 
@@ -60,5 +61,6 @@ def dependency_lookup(dependencies):
     Generate a lookup table to convert "normal" underscored Django table names to
     custom names, if used, and wrap in PostgreSQL table identifier (double quote)
     """
-    d = {default_table_name(dep[0], dep[1]): '"{}"'.format(table_name_get_model(dep[0], dep[1])) for dep in dependencies}
+    d = {default_table_name(dep[0], dep[1]): '"{}"'.format(
+        table_name_get_model(dep[0], dep[1])) for dep in dependencies}
     return d
