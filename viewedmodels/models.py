@@ -21,7 +21,6 @@ class ViewedModel(models.Model):
 
     class Meta:
         abstract = True
-        managed = False
 
     # Specify dependencies. Dependencies used to find model instances and table names to generate
     # drop/create statements in the correct order
@@ -96,6 +95,13 @@ class ViewedModel(models.Model):
 
 
 class MaterializedViewedModel(ViewedModel):
+
+    @classmethod
+    def sql(cls):
+        pass
+
+    class Meta:
+        abstract = True
 
     materialized = True
 
@@ -193,10 +199,16 @@ class ViewDefinition:
         for c in get_subclasses(ViewedModel):
             if apps != 'all' and c._meta.app_label not in apps:
                 continue
+            if c._meta.abstract is True:
+                continue
             class_string = model_default_table_name(c)
             for dependency in getattr(c, 'dependencies', []):
-                m = get_model(app_name=dependency[0], model_name=dependency[1])
-                dependencies[class_string].add(model_default_table_name(m))
+                try:
+                    m = get_model(app_name=dependency[0], model_name=dependency[1])
+                    dependencies[class_string].add(model_default_table_name(m))
+                except LookupError as m:
+                    logger.error(dependency)
+                    raise LookupError("Dependency of %s %s failed", app_name, model_name)
 
         flattened = toposort_flatten(dependencies)
         logger.info(flattened)
