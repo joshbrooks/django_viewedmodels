@@ -102,6 +102,7 @@ class MaterializedViewedModel(ViewedModel):
 
     class Meta:
         abstract = True
+        managed=False
 
     materialized = True
 
@@ -141,7 +142,6 @@ class MaterializedViewedModel(ViewedModel):
     @classmethod
     def _set_comment(cls, comment):
         with connection.cursor() as set_comment:
-            print(comment)
             set_comment.execute(
                 "COMMENT ON MATERIALIZED VIEW {} IS '{}'".format(table_name(cls), comment))
 
