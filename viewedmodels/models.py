@@ -208,7 +208,7 @@ class ViewDefinition:
                     dependencies[class_string].add(model_default_table_name(m))
                 except LookupError as m:
                     logger.error(dependency)
-                    raise LookupError("Dependency of %s %s failed", app_name, model_name)
+                    raise LookupError("Dependency of %s failed", dependency)
 
         flattened = toposort_flatten(dependencies)
         logger.info(flattened)
