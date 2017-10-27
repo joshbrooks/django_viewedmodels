@@ -133,7 +133,10 @@ class MaterializedViewedModel(ViewedModel):
             FROM   pg_description
             WHERE  objoid = '{}'::regclass;
             '''.format(table_name(cls)))
-            return get_comment.fetchone()[0]
+            comment = get_comment.fetchone()
+            if not comment:
+                return None
+            return comment[0]
 
     @classmethod
     def _set_comment(cls, comment):
@@ -148,10 +151,10 @@ class MaterializedViewedModel(ViewedModel):
         Comment to write on a materialized view update
         :return:
         """
-        comment = cls.get_comment()
+        comment = cls.get_comment() or '{}'
         # Comment should be JSON string
         try:
-            comment = json.dumps(comment)
+            comment = json.loads(comment)
         except JSONDecodeError:
             comment = {'old_content': '%s' % (comment)}
         comment['last_updated'] = time_from_db()
