@@ -104,7 +104,7 @@ class MaterializedViewedModel(ViewedModel):
         abstract = True
         managed=False
 
-    concurrently = True  # Concurrently refresh this view
+    concurrently = False  # Concurrently refresh this view
     materialized = True
 
     @classmethod
