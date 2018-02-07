@@ -104,6 +104,7 @@ class MaterializedViewedModel(ViewedModel):
         abstract = True
         managed=False
 
+    concurrently = True  # Concurrently refresh this view
     materialized = True
 
     @classmethod
@@ -113,8 +114,9 @@ class MaterializedViewedModel(ViewedModel):
         if not cls.update_mv():
             logger.info('Update skipped')
             return
+        concurrently = 'CONCURRENTLY' if cls.concurrently is True else ''
 
-        sql = 'REFRESH MATERIALIZED VIEW {}'.format(table_name(cls))
+        sql = 'REFRESH MATERIALIZED VIEW {} {}'.format(concurrently, table_name(cls))
 
         if not kwargs.get('dryrun', False):
             try:
@@ -273,3 +275,4 @@ class ViewDefinition:
         mat_models = [m for m in ordered_models if getattr(
             m, 'materialized', False)]
         return [model.sql_refresh(**kwargs) for model in mat_models]
+
