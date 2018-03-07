@@ -127,6 +127,21 @@ class MaterializedViewedModel(ViewedModel):
                 logger.error(e)
                 raise
             return [sql, None]
+            
+    @classmethod
+    def sql_vacuum(cls, **kwargs):
+        """Generate code to vacuum a Materialized View"""
+
+        sql = 'VACUUM ANALYZE {}'.format(table_name(cls))
+
+        if not kwargs.get('dryrun', False):
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, None)
+            except ProgrammingError as e:
+                logger.error(e)
+                raise
+            return [sql, None]
 
     @classmethod
     def get_comment(cls):
@@ -275,4 +290,15 @@ class ViewDefinition:
         mat_models = [m for m in ordered_models if getattr(
             m, 'materialized', False)]
         return [model.sql_refresh(**kwargs) for model in mat_models]
+
+
+    @classmethod
+    def vacuum_mv(cls, apps='all', **kwargs):
+        """
+        Refresh all materialized views on the application
+        """
+        ordered_models = cls.sort_dependencies(apps=apps)
+        mat_models = [m for m in ordered_models if getattr(
+            m, 'materialized', False)]
+        return [model.sql_vacuum(**kwargs) for model in mat_models]
 
