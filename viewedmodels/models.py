@@ -102,7 +102,7 @@ class MaterializedViewedModel(ViewedModel):
 
     class Meta:
         abstract = True
-        managed=False
+        managed = False
 
     concurrently = True  # Concurrently refresh this view
     materialized = True
@@ -127,7 +127,7 @@ class MaterializedViewedModel(ViewedModel):
                 logger.error(e)
                 raise
             return [sql, None]
-            
+
     @classmethod
     def sql_vacuum(cls, **kwargs):
         """Generate code to vacuum a Materialized View"""
@@ -291,7 +291,6 @@ class ViewDefinition:
             m, 'materialized', False)]
         return [model.sql_refresh(**kwargs) for model in mat_models]
 
-
     @classmethod
     def vacuum_mv(cls, apps='all', **kwargs):
         """
@@ -302,3 +301,26 @@ class ViewDefinition:
             m, 'materialized', False)]
         return [model.sql_vacuum(**kwargs) for model in mat_models]
 
+    @classmethod
+    def set_statistics(cls, apps='all', **kwargs):
+        """
+        Set statistics for the postgresql query planner on materialized views
+        """
+        ordered_models = cls.sort_dependencies(apps=apps)
+        mat_models = [m for m in ordered_models if getattr(m, 'materialized', False)]
+        sql = '''ALTER MATERIALIZED VIEW {} ALTER COLUMN {} SET STATISTICS {};'''
+        statements = []
+
+        for model in mat_models:
+
+            for field in model._meta.get_fields():
+                statements.push(sql.format(table_name(cls), field.name, kwargs.get('value', 10)))
+
+        if not kwargs.get('dryrun', False):
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, None)
+            except ProgrammingError as e:
+                logger.error(e)
+                raise
+        return statements
