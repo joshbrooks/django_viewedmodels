@@ -7,9 +7,9 @@ Making a New Release
 ```python
  setup(
     # ...
-    version='0.1.25',
+    version='0.1.26',
     # ...
-    download_url='https://github.com/joshbrooks/django_viewedmodels/archive/0.1.25.tar.gz',
+    download_url='https://github.com/joshbrooks/django_viewedmodels/archive/0.1.26.tar.gz',
     )
 ```
 

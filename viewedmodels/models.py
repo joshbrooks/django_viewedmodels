@@ -314,12 +314,13 @@ class ViewDefinition:
         for model in mat_models:
 
             for field in model._meta.get_fields():
-                statements.push(sql.format(table_name(cls), field.name, kwargs.get('value', 10)))
+                statements.append(sql.format(table_name(model), field.column, kwargs.get('value', 100)))
 
         if not kwargs.get('dryrun', False):
             try:
-                with connection.cursor() as cursor:
-                    cursor.execute(sql, None)
+                for statement in statements:
+                    with connection.cursor() as cursor:
+                        cursor.execute(statement, None)
             except ProgrammingError as e:
                 logger.error(e)
                 raise
